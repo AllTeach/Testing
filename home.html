@@ -56,7 +56,7 @@
 
                 var serverAddress = document.getElementById("sAddr").value;
                 // Create a new instance of the websocket
-                var addr = "ws://" + serverAddress + "/WebSocketChat/echo/"+user;
+                var addr = "wss://" + serverAddress + "/WebSocketChat/echo/"+user;
                 webSocket = new WebSocket(addr);
                 
          //       webSocket = new WebSocket("ws://192.168.3.64:8080/WebSocketChat/echo");
