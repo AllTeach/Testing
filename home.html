@@ -2,119 +2,167 @@
  
 <html>
     <head>
-         <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
 
          
-        <title>Echo Chamber</title>
+        <title>Speech To Text and Text to Speech</title>
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
         
         <meta name="description" content="">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/shoelace-css/1.0.0-beta16/shoelace.css">
-        <link rel="stylesheet" href="styles.css">
-
+    
     </head>
     <body>
 
 
+	<style>
+
+	textarea {
+  width: 100%;
+  height: 150px;
+  padding: 12px 20px;
+  box-sizing: border-box;
+  border: 2px solid #ccc;
+  border-radius: 4px;
+  background-color: #f8f8f8;
+  resize: none;
+}
+	</style>
+
        <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
-<!---        <script src="script.js"></script>  --->
-        <h1>  RULES </h1>
-        
+
+
+	   <div id="languages">
+	   </div>
         <div>
-            server address: <input type="text" placeholder="enter server address: IP:PORT" id="sAddr">
-            <br>
-            your name  <input type="text" placeholder="enter your name" id="uName">
-            <br><br>
-            your message:<input type="text" id="messageinput" placeholder="type your  message here" style="display:none"/>
-        </div>
-        <div>
-            
-            <button type="button" onclick="openSocket();" >Open</button>
-            <button type="button" onclick="send();" >Send</button>
-            <button type="button" onclick="closeSocket();" >Close</button>
-        </div>
-        <!-- Server responses get written here -->
-        <div id="messages"></div>
+		
+
+
+		<textarea placeholder="enter text here" id="textToSpeak"></textarea> 
+
+		<button id="speak">Speak</button>
+		</div>
        
         <!-- Script to utilise the WebSocket -->
         <script type="text/javascript">
                        
-            var webSocket;
-            var messages = document.getElementById("messages");
-           
-           
-            function openSocket(){
-                // Ensures only one connection is open at a time
-                if(webSocket !== undefined && webSocket.readyState !== WebSocket.CLOSED){
-                   writeResponse("WebSocket is already opened.");
-                    return;
-                }
-                var user = document.getElementById("uName").value;
+           	// this will hold an english voice
+					var english_voice = '';
 
-                var serverAddress = document.getElementById("sAddr").value;
-                // Create a new instance of the websocket
-                var addr = "ws://" + serverAddress + "/WebSocketChat/echo/"+user;
-                webSocket = new WebSocket(addr);
-                
-         //       webSocket = new WebSocket("ws://192.168.3.64:8080/WebSocketChat/echo");
-                 
-                /**
-                 * Binds functions to the listeners for the websocket.
-                 */
-                webSocket.onopen = function(event){
-                    // For reasons I can't determine, onopen gets called twice
-                    // and the first time event.data is undefined.
-                    // Leave a comment if you know the answer.
-                    if(event.data === undefined)
-                        return;
- u
-                    writeResponse(event.data);
-                };
- 
-                webSocket.onmessage = function(event){
-                    writeResponse(event.data);
-                    var result = JSON.parse(event.data);
-                    
-                    writeResponse( "user: " + result.user);
-                    writeResponse("data: " + result.data);
+					var voiceSelect = document.createElement('select');
+					var available_voices;
 
-                };
- 
-                webSocket.onclose = function(event){
-                    writeResponse("Connection closed");
-                };
-            }
-           
+					
+
             /**
              * Sends the value of the text input to the server
              */
-            function send(){
-                var user = document.getElementById("uName").value;
-                var text = document.getElementById("messageinput").value;
-                                        
-                                        
-               var myData = JSON.stringify({user:user,data:text});
-                //webSocket.send(user + ":" + text);
-                webSocket.send(myData);
-                //document.getElementById("messageinput").value = "";
+            function readMessage(message){
+               var speech = new SpeechSynthesisUtterance();
+
+				  // Set the text and voice attributes.
+				  speech.text = message;
+				  speech.volume = 1;
+				  speech.rate = 1;
+				  speech.pitch = 1;
+
+				  window.speechSynthesis.speak(speech);
                 
             }
            
-            function closeSocket(){
-                webSocket.close();
-            }
- 
-            function writeResponse(text){
-                messages.innerHTML += "<br/>" + text;
-            }
-           
-        $('#uName').focusout(function(){
-            document.getElementById('messageinput').style.setProperty('display','block');
-        });
-        
+        $( document ).ready(function() {
+
+
+				// check which languages are supprted
+				// list of languages is probably not loaded, wait for it
+				if(window.speechSynthesis.getVoices().length == 0) {
+					window.speechSynthesis.addEventListener('voiceschanged', function() {
+						textToSpeech();
+					});
+				}
+				else {
+					// languages list available, no need to wait
+					textToSpeech()
+				}
+
+
+				
+				function textToSpeech() {
+					// get all voices that browser offers
+					 available_voices = window.speechSynthesis.getVoices();
+
+				
+
+					// find voice by language locale "en-US"
+					// if not then select the first voice
+					voiceSelect.innerHTML = "";
+					var lan = "";
+					
+					for(var i=0; i<available_voices.length; i++) {
+						var option = document.createElement('option');
+						option.textContent = available_voices[i].name + ' (' + available_voices[i].lang + ')';
+
+
+						 option.setAttribute('data-lang', available_voices[i].lang);
+						 option.setAttribute('data-name', available_voices[i].name);	
+
+						 voiceSelect.appendChild(option);
+						lan	+=  available_voices[i].lang + "</br>";
+					/*
+					if(available_voices[i].lang === 'en-US') {
+							english_voice = available_voices[i];
+							break;
+						}
+						*/
+					}
+
+					$("#languages").html(voiceSelect);
+					
+				}
+					
+					
+					// bind the click event of the button
+					$("#speak").click(function(){
+
+						var voice;
+						let message = $("#textToSpeak").val();
+
+				  var selectedOption = voiceSelect.selectedOptions[0].getAttribute('data-name');
+
+				  for(var i=0;i<available_voices.length;i++)
+				  {
+				  	  if(available_voices[i].name == selectedOption)
+							voice = available_voices[i];
+				  }
+				// in case for some reason no language has been chosen
+				// set default - WENGLISH
+			//	if(english_voice === '')
+				//		english_voice = available_voices[0];
+
+				//var objVoice = {"code":"he", "name":"Hebrew"};
+
+				// new SpeechSynthesisUtterance object
+					var utter = new SpeechSynthesisUtterance();
+					utter.rate = 1;
+					utter.pitch = 0.5;
+					utter.text = message;
+					utter.voice = voice;
+					// event after text has been spoken
+					utter.onend = function() {
+						//alert('Speech has finished');
+					}
+
+					// speak
+					window.speechSynthesis.speak(utter);
+
+
+				
+				// prev version 
+				// readMessage(message);
+			
+			});
+
+		});
         
         </script>
        
